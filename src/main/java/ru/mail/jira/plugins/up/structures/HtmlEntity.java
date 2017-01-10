@@ -5,10 +5,10 @@
 package ru.mail.jira.plugins.up.structures;
 
 
+import net.jcip.annotations.Immutable;
+
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
-
-import net.jcip.annotations.Immutable;
 
 
 /**

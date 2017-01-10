@@ -5,34 +5,6 @@
 package ru.mail.jira.plugins.up;
 
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.GenericEntity;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
-import org.apache.log4j.Logger;
-import org.apache.velocity.exception.VelocityException;
-
-import ru.mail.jira.plugins.up.common.Utils;
-import ru.mail.jira.plugins.up.structures.AutocompleteUniversalData;
-import ru.mail.jira.plugins.up.structures.HtmlEntity;
-import ru.mail.jira.plugins.up.structures.ISQLDataBean;
-import ru.mail.jira.plugins.up.structures.ProjRole;
-
-import com.atlassian.crowd.embedded.api.User;
-import com.atlassian.jira.ComponentManager;
 import com.atlassian.jira.avatar.Avatar.Size;
 import com.atlassian.jira.avatar.AvatarServiceImpl;
 import com.atlassian.jira.component.ComponentAccessor;
@@ -42,10 +14,29 @@ import com.atlassian.jira.security.JiraAuthenticationContext;
 import com.atlassian.jira.security.Permissions;
 import com.atlassian.jira.security.groups.GroupManager;
 import com.atlassian.jira.security.roles.ProjectRoleManager;
+import com.atlassian.jira.user.ApplicationUser;
 import com.atlassian.jira.user.UserProjectHistoryManager;
 import com.atlassian.jira.user.util.UserUtil;
 import com.atlassian.jira.util.I18nHelper;
 import com.atlassian.jira.util.json.JSONException;
+import org.apache.log4j.Logger;
+import org.apache.velocity.exception.VelocityException;
+import ru.mail.jira.plugins.up.common.Utils;
+import ru.mail.jira.plugins.up.structures.AutocompleteUniversalData;
+import ru.mail.jira.plugins.up.structures.HtmlEntity;
+import ru.mail.jira.plugins.up.structures.ISQLDataBean;
+import ru.mail.jira.plugins.up.structures.ProjRole;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.GenericEntity;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.net.URI;
+import java.util.*;
 
 
 @Path("/upautocompletesrv")
@@ -68,8 +59,7 @@ public class UserPickerAutocompleteService
         this.settings = settings;
         this.grMgr = grMgr;
         this.projectRoleManager = projectRoleManager;
-        this.avatarService = ComponentManager
-            .getComponentInstanceOfType(AvatarServiceImpl.class);
+        this.avatarService = ComponentAccessor.getComponentOfType(AvatarServiceImpl.class);
     }
 
     @POST
@@ -77,12 +67,11 @@ public class UserPickerAutocompleteService
     @Produces({MediaType.APPLICATION_JSON})
     public Response getCfVals(@Context HttpServletRequest req)
     {
-        JiraAuthenticationContext authCtx = ComponentManager.getInstance()
+        JiraAuthenticationContext authCtx = ComponentAccessor
             .getJiraAuthenticationContext();
         I18nHelper i18n = authCtx.getI18nHelper();
-        User currentUser = authCtx.getLoggedInUser();
-        UserProjectHistoryManager userProjectHistoryManager = ComponentManager
-            .getComponentInstanceOfType(UserProjectHistoryManager.class);
+        ApplicationUser currentUser = authCtx.getLoggedInUser();
+        UserProjectHistoryManager userProjectHistoryManager = ComponentAccessor.getComponentOfType(UserProjectHistoryManager.class);
         Project currentProject = userProjectHistoryManager.getCurrentProject(
             Permissions.BROWSE, authCtx.getLoggedInUser());
         if (currentUser == null)
@@ -103,7 +92,7 @@ public class UserPickerAutocompleteService
         if (Utils.isValidStr(cfId) && issueKey != null
             && Utils.isValidLongParam(rowCount) && pattern != null)
         {
-            CustomField cf = ComponentManager.getInstance()
+            CustomField cf = ComponentAccessor
                 .getCustomFieldManager().getCustomFieldObject(cfId);
             if (cf == null)
             {
@@ -135,10 +124,10 @@ public class UserPickerAutocompleteService
 
                 for (String group : groups)
                 {
-                    Collection<User> users = grMgr.getUsersInGroup(group);
+                    Collection<ApplicationUser> users = grMgr.getUsersInGroup(group);
                     if (users != null)
                     {
-                        for (User user : users)
+                        for (ApplicationUser user : users)
                         {
                             map.put(user.getName(), user.getDisplayName());
                         }
@@ -164,10 +153,10 @@ public class UserPickerAutocompleteService
 
             if (storedData != null)
             {
-                UserUtil userUtil = ComponentManager.getInstance()
+                UserUtil userUtil = ComponentAccessor
                     .getUserUtil();
                 values = new ArrayList<ISQLDataBean>();
-                User user;
+                ApplicationUser user;
 
                 long elemsAdded = 0;
                 long maxElems = Long.valueOf(rowCount);
@@ -234,10 +223,10 @@ public class UserPickerAutocompleteService
     @Produces({MediaType.APPLICATION_JSON})
     public Response getUserHtml(@Context HttpServletRequest req)
     {
-        JiraAuthenticationContext authCtx = ComponentManager.getInstance()
+        JiraAuthenticationContext authCtx = ComponentAccessor
             .getJiraAuthenticationContext();
         I18nHelper i18n = authCtx.getI18nHelper();
-        User user = authCtx.getLoggedInUser();
+        ApplicationUser user = authCtx.getLoggedInUser();
         if (user == null)
         {
             log.error("UserPickerAutocompleteService::validateInput - User is not logged");
@@ -256,7 +245,7 @@ public class UserPickerAutocompleteService
                 .status(400).build();
         }
 
-        CustomField cf = ComponentManager.getInstance().getCustomFieldManager()
+        CustomField cf = ComponentAccessor.getCustomFieldManager()
             .getCustomFieldObject(cfId);
         if (cf == null)
         {
@@ -269,8 +258,8 @@ public class UserPickerAutocompleteService
         AutocompleteUniversalData entity = new AutocompleteUniversalData();
         if (Utils.isOfMultiUserType(cf.getCustomFieldType().getKey()))
         {
-            User userParam = ComponentManager.getInstance().getUserUtil()
-                .getUserObject(cfValue);
+            ApplicationUser userParam = ComponentAccessor.getUserManager()
+                .getUserByKey(cfValue);
             if (userParam == null)
             {
                 // nothing to do. Sending object with empty key

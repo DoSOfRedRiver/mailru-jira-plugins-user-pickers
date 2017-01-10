@@ -5,39 +5,35 @@
 package ru.mail.jira.plugins.up;
 
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
-
-import ru.mail.jira.plugins.up.common.Utils;
-import ru.mail.jira.plugins.up.structures.ProjRole;
-
-import com.atlassian.crowd.embedded.api.User;
-import com.atlassian.jira.ComponentManager;
 import com.atlassian.jira.avatar.Avatar.Size;
 import com.atlassian.jira.avatar.AvatarServiceImpl;
-import com.atlassian.jira.bc.user.search.UserPickerSearchService;
+import com.atlassian.jira.bc.user.search.UserSearchService;
+import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.config.properties.ApplicationProperties;
 import com.atlassian.jira.issue.Issue;
 import com.atlassian.jira.issue.customfields.converters.MultiUserConverterImpl;
-import com.atlassian.jira.issue.customfields.converters.StringConverter;
 import com.atlassian.jira.issue.customfields.impl.MultiUserCFType;
 import com.atlassian.jira.issue.customfields.manager.GenericConfigManager;
 import com.atlassian.jira.issue.customfields.persistence.CustomFieldValuePersister;
 import com.atlassian.jira.issue.fields.CustomField;
 import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem;
+import com.atlassian.jira.issue.fields.rest.json.UserBeanFactory;
+import com.atlassian.jira.issue.fields.rest.json.beans.JiraBaseUrls;
 import com.atlassian.jira.security.JiraAuthenticationContext;
 import com.atlassian.jira.security.groups.GroupManager;
 import com.atlassian.jira.security.roles.ProjectRoleManager;
-import com.atlassian.jira.user.util.UserUtil;
+import com.atlassian.jira.user.ApplicationUser;
+import com.atlassian.jira.user.util.UserManager;
+import com.atlassian.jira.util.I18nHelper;
 import com.atlassian.jira.util.json.JSONException;
 import com.atlassian.jira.web.FieldVisibilityManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.mail.jira.plugins.up.common.Utils;
+import ru.mail.jira.plugins.up.structures.ProjRole;
+
+import java.net.URI;
+import java.util.*;
 
 
 /**
@@ -47,6 +43,7 @@ import com.atlassian.jira.web.FieldVisibilityManager;
  */
 public class MultiRoleGroupUserField extends MultiUserCFType
 {
+    private static final Logger log = LoggerFactory.getLogger(MultiRoleGroupUserField.class);
     /**
      * Plugin data.
      */
@@ -72,26 +69,26 @@ public class MultiRoleGroupUserField extends MultiUserCFType
      * Constructor.
      */
     public MultiRoleGroupUserField(
-        CustomFieldValuePersister customFieldValuePersister,
-        StringConverter stringConverter,
-        GenericConfigManager genericConfigManager,
-        ApplicationProperties applicationProperties,
-        JiraAuthenticationContext authenticationContext,
-        UserPickerSearchService searchService,
-        FieldVisibilityManager fieldVisibilityManager, PluginData data,
-        GroupManager grMgr, ProjectRoleManager projectRoleManager,
-        UserUtil userUtil, com.atlassian.sal.api.ApplicationProperties appProp)
+            CustomFieldValuePersister customFieldValuePersister,
+            GenericConfigManager genericConfigManager,
+            ApplicationProperties applicationProperties,
+            JiraAuthenticationContext authenticationContext,
+            UserSearchService searchService,
+            FieldVisibilityManager fieldVisibilityManager, PluginData data,
+            GroupManager grMgr, ProjectRoleManager projectRoleManager,
+            UserManager userManager, com.atlassian.sal.api.ApplicationProperties appProp,
+            I18nHelper helper, JiraBaseUrls jiraBaseUrls, UserBeanFactory userBeanFactory)
     {
-        super(customFieldValuePersister, stringConverter, genericConfigManager,
-            new MultiUserConverterImpl(userUtil), applicationProperties,
-            authenticationContext, searchService, fieldVisibilityManager);
+        super(customFieldValuePersister, genericConfigManager,
+            new MultiUserConverterImpl(userManager, helper), applicationProperties,
+            authenticationContext, searchService, fieldVisibilityManager, jiraBaseUrls,
+                userBeanFactory);
         this.data = data;
         this.grMgr = grMgr;
         this.projectRoleManager = projectRoleManager;
         this.baseUrl = appProp.getBaseUrl();
 
-        this.avatarService = ComponentManager
-            .getComponentInstanceOfType(AvatarServiceImpl.class);
+        this.avatarService = ComponentAccessor.getComponentOfType(AvatarServiceImpl.class);
     }
 
     @Override
@@ -136,10 +133,10 @@ public class MultiRoleGroupUserField extends MultiUserCFType
 
         /* Build possible values list */
 
-        SortedSet<User> possibleUsers = Utils.buildUsersList(grMgr,
+        SortedSet<ApplicationUser> possibleUsers = Utils.buildUsersList(grMgr,
             projectRoleManager, issue.getProjectObject(), groups, projRoles);
-        Set<User> allUsers = new HashSet<User>(possibleUsers);
-        SortedSet<User> highlightedUsers = Utils.buildUsersList(grMgr,
+        Set<ApplicationUser> allUsers = new HashSet<ApplicationUser>(possibleUsers);
+        SortedSet<ApplicationUser> highlightedUsers = Utils.buildUsersList(grMgr,
             projectRoleManager, issue.getProjectObject(), highlightedGroups,
             highlightedProjRoles);
         highlightedUsers.retainAll(possibleUsers);
@@ -147,11 +144,11 @@ public class MultiRoleGroupUserField extends MultiUserCFType
 
         Map<String, String> highlightedUsersSorted = new LinkedHashMap<String, String>();
         Map<String, String> otherUsersSorted = new LinkedHashMap<String, String>();
-        for (User user : highlightedUsers)
+        for (ApplicationUser user : highlightedUsers)
         {
             highlightedUsersSorted.put(user.getName(), user.getDisplayName());
         }
-        for (User user : possibleUsers)
+        for (ApplicationUser user : possibleUsers)
         {
             otherUsersSorted.put(user.getName(), user.getDisplayName());
         }
@@ -170,7 +167,7 @@ public class MultiRoleGroupUserField extends MultiUserCFType
         params.put("baseUrl", baseUrl);
 
         usersAvatars = new HashMap<String, String>(allUsers.size());
-        for (User user : allUsers)
+        for (ApplicationUser user : allUsers)
         {
             usersAvatars.put(user.getName(), getUserAvatarUrl(user));
         }
@@ -181,7 +178,7 @@ public class MultiRoleGroupUserField extends MultiUserCFType
         return params;
     }
 
-    private String getUserAvatarUrl(User user)
+    private String getUserAvatarUrl(ApplicationUser user)
     {
         URI uri = avatarService.getAvatarURL(user, user.getName(), Size.SMALL);
 

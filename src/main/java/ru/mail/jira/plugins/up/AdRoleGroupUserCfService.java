@@ -5,35 +5,7 @@
 package ru.mail.jira.plugins.up;
 
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
-import org.apache.log4j.Logger;
-import org.apache.velocity.exception.VelocityException;
-import org.ofbiz.core.entity.GenericValue;
-
-import ru.mail.jira.plugins.up.common.Consts;
-import ru.mail.jira.plugins.up.common.Utils;
-import ru.mail.jira.plugins.up.structures.HtmlEntity;
-import ru.mail.jira.plugins.up.structures.ProjRole;
-
 import com.atlassian.crowd.embedded.api.User;
-import com.atlassian.jira.ComponentManager;
 import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.issue.fields.CustomField;
 import com.atlassian.jira.project.Project;
@@ -43,8 +15,24 @@ import com.atlassian.jira.security.groups.GroupManager;
 import com.atlassian.jira.security.roles.ProjectRole;
 import com.atlassian.jira.security.roles.ProjectRoleManager;
 import com.atlassian.jira.security.xsrf.XsrfTokenGenerator;
+import com.atlassian.jira.user.ApplicationUser;
 import com.atlassian.jira.util.I18nHelper;
 import com.atlassian.jira.util.json.JSONException;
+import org.apache.log4j.Logger;
+import org.apache.velocity.exception.VelocityException;
+import ru.mail.jira.plugins.up.common.Consts;
+import ru.mail.jira.plugins.up.common.Utils;
+import ru.mail.jira.plugins.up.structures.HtmlEntity;
+import ru.mail.jira.plugins.up.structures.ProjRole;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.util.*;
 
 
 /**
@@ -98,10 +86,11 @@ public class AdRoleGroupUserCfService
     public Response configureSelectedSettingsDialog(
         @Context HttpServletRequest req)
     {
-        JiraAuthenticationContext authCtx = ComponentManager.getInstance()
-            .getJiraAuthenticationContext();
+        JiraAuthenticationContext authCtx = ComponentAccessor
+                .getJiraAuthenticationContext();
         I18nHelper i18n = authCtx.getI18nHelper();
-        User user = authCtx.getLoggedInUser();
+        User user = authCtx.getLoggedInUser()
+                .getDirectoryUser();
         if (user == null)
         {
             log.error("AdRoleGroupUserCfService::configureSelectedSettingsDialog - User is not logged");
@@ -110,8 +99,8 @@ public class AdRoleGroupUserCfService
                 .status(401).build();
         }
 
-        XsrfTokenGenerator xsrfTokenGenerator = ComponentManager
-            .getComponentInstanceOfType(XsrfTokenGenerator.class);
+        XsrfTokenGenerator xsrfTokenGenerator = ComponentAccessor
+                .getComponentOfType(XsrfTokenGenerator.class);
         String token = xsrfTokenGenerator.getToken(req);
         if (!xsrfTokenGenerator.generatedByAuthenticatedUser(token))
         {
@@ -165,10 +154,10 @@ public class AdRoleGroupUserCfService
     @Produces({MediaType.APPLICATION_JSON})
     public Response configureSingleField(@Context HttpServletRequest req)
     {
-        JiraAuthenticationContext authCtx = ComponentManager.getInstance()
-            .getJiraAuthenticationContext();
+        JiraAuthenticationContext authCtx = ComponentAccessor
+                .getJiraAuthenticationContext();
         I18nHelper i18n = authCtx.getI18nHelper();
-        User user = authCtx.getLoggedInUser();
+        User user = authCtx.getLoggedInUser().getDirectoryUser();
         if (user == null)
         {
             log.error("AdRoleGroupUserCfService::configureSingleField - User is not logged");
@@ -177,8 +166,8 @@ public class AdRoleGroupUserCfService
                 .status(401).build();
         }
 
-        XsrfTokenGenerator xsrfTokenGenerator = ComponentManager
-            .getComponentInstanceOfType(XsrfTokenGenerator.class);
+        XsrfTokenGenerator xsrfTokenGenerator = ComponentAccessor
+                .getComponentOfType(XsrfTokenGenerator.class);
         String token = xsrfTokenGenerator.getToken(req);
         if (!xsrfTokenGenerator.generatedByAuthenticatedUser(token))
         {
@@ -252,10 +241,10 @@ public class AdRoleGroupUserCfService
     @Produces({MediaType.APPLICATION_JSON})
     public Response initSelectedSettingsDialog(@Context HttpServletRequest req)
     {
-        JiraAuthenticationContext authCtx = ComponentManager.getInstance()
-            .getJiraAuthenticationContext();
+        JiraAuthenticationContext authCtx = ComponentAccessor
+                .getJiraAuthenticationContext();
         I18nHelper i18n = authCtx.getI18nHelper();
-        User user = authCtx.getLoggedInUser();
+        User user = authCtx.getLoggedInUser().getDirectoryUser();
         if (user == null)
         {
             log.error("AdRoleGroupUserCfService::initSelectedSettingsDialog - User is not logged");
@@ -264,8 +253,8 @@ public class AdRoleGroupUserCfService
                 .status(401).build();
         }
 
-        XsrfTokenGenerator xsrfTokenGenerator = ComponentManager
-            .getComponentInstanceOfType(XsrfTokenGenerator.class);
+        XsrfTokenGenerator xsrfTokenGenerator = ComponentAccessor
+                .getComponentOfType(XsrfTokenGenerator.class);
         String atl_token = xsrfTokenGenerator.generateToken(req);
 
         String cfIdStr = req.getParameter("cfId");
@@ -276,9 +265,10 @@ public class AdRoleGroupUserCfService
         }
 
         Map<String, String> userMap = new LinkedHashMap<String, String>();
-        Collection<User> users = ComponentManager.getInstance().getUserUtil()
-            .getUsers();
-        for (User userObj : users)
+        Collection<ApplicationUser> users = ComponentAccessor.getUserUtil()
+                .getUsers();
+        //TODO possibly change velocity template to work with ApplicationUser
+        for (ApplicationUser userObj : users)
         {
             userMap.put(userObj.getName(), userObj.getDisplayName());
         }
@@ -314,10 +304,10 @@ public class AdRoleGroupUserCfService
     @Produces({MediaType.APPLICATION_JSON})
     public Response initSettingsDialog(@Context HttpServletRequest req)
     {
-        JiraAuthenticationContext authCtx = ComponentManager.getInstance()
+        JiraAuthenticationContext authCtx = ComponentAccessor
             .getJiraAuthenticationContext();
         I18nHelper i18n = authCtx.getI18nHelper();
-        User user = authCtx.getLoggedInUser();
+        ApplicationUser user = authCtx.getLoggedInUser();
         if (user == null)
         {
             log.error("AdRoleGroupUserCfService::initSettingsDialog - User is not logged");
@@ -326,8 +316,8 @@ public class AdRoleGroupUserCfService
                 .status(401).build();
         }
 
-        XsrfTokenGenerator xsrfTokenGenerator = ComponentManager
-            .getComponentInstanceOfType(XsrfTokenGenerator.class);
+        XsrfTokenGenerator xsrfTokenGenerator = ComponentAccessor
+            .getComponentOfType(XsrfTokenGenerator.class);
         String atl_token = xsrfTokenGenerator.generateToken(req);
 
         String cfIdStr = req.getParameter("cfId");
@@ -338,14 +328,14 @@ public class AdRoleGroupUserCfService
         }
 
         Map<String, String> projs = new TreeMap<String, String>();
-        CustomField cf = ComponentManager.getInstance().getCustomFieldManager()
+        CustomField cf = ComponentAccessor.getCustomFieldManager()
             .getCustomFieldObject(cfIdStr);
         if (!cf.isAllProjects())
         {
-            List<GenericValue> aProjs = cf.getAssociatedProjects();
-            for (GenericValue proj : aProjs)
+            List<Project> aProjs = cf.getAssociatedProjectObjects();
+            for (Project proj : aProjs)
             {
-                projs.put(proj.get("id").toString(), (String) proj.get("name"));
+                projs.put(proj.getId().toString(), proj.getName());
             }
         }
         else

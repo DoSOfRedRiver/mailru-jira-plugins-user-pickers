@@ -7,7 +7,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ru.mail.jira.plugins</groupId>
     <artifactId>userpickers</artifactId>
-    <version>1.0.9</version>
+    <version>1.1.0</version>
 
     <organization>
         <name>Andrey Markelov | Mail.Ru Group</name>
@@ -21,10 +21,16 @@
     <dependencies>
         <dependency>
             <groupId>com.atlassian.jira</groupId>
-            <artifactId>atlassian-jira</artifactId>
+            <artifactId>jira-api</artifactId>
             <version>${jira.version}</version>
             <scope>provided</scope>
-        </dependency>        
+        </dependency>
+        <dependency>
+            <groupId>com.atlassian.jira</groupId>
+            <artifactId>jira-core</artifactId>
+            <version>${jira.version}</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -66,7 +72,7 @@
                 <extensions>true</extensions>
                 <configuration>
                     <productVersion>${jira.version}</productVersion>
-                    <productDataVersion>${jira.data.version}</productDataVersion>
+                    <productDataVersion>${jira.version}</productDataVersion>
                 </configuration>
             </plugin>
             <plugin>
@@ -83,9 +89,8 @@
         <!-- <jira.version>5.1.8</jira.version>
         <jira.data.version>5.1</jira.data.version>
         <amps.version>4.0</amps.version-->
-        <jira.version>4.3.4</jira.version>
-        <jira.data.version>4.3</jira.data.version>
-        <amps.version>3.11</amps.version>
+        <jira.version>7.2.4</jira.version>
+        <amps.version>6.2.6</amps.version>
         <!-- <jira.version>4.4.3</jira.version>
         <jira.data.version>4.4</jira.data.version>
         <amps.version>4.0</amps.version-->

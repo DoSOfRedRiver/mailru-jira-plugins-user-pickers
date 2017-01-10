@@ -5,25 +5,34 @@
 package ru.mail.jira.plugins.up;
 
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-
-import ru.mail.jira.plugins.up.common.Utils;
-
-import com.atlassian.crowd.embedded.api.User;
-import com.atlassian.jira.bc.user.search.UserPickerSearchService;
+import com.atlassian.jira.bc.user.search.UserSearchService;
+import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.config.properties.ApplicationProperties;
 import com.atlassian.jira.issue.Issue;
-import com.atlassian.jira.issue.customfields.converters.UserConverterImpl;
+import com.atlassian.jira.issue.customfields.converters.UserConverter;
 import com.atlassian.jira.issue.customfields.impl.UserCFType;
 import com.atlassian.jira.issue.customfields.manager.GenericConfigManager;
 import com.atlassian.jira.issue.customfields.persistence.CustomFieldValuePersister;
 import com.atlassian.jira.issue.fields.CustomField;
+import com.atlassian.jira.issue.fields.config.manager.FieldConfigSchemeManager;
 import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem;
+import com.atlassian.jira.issue.fields.rest.json.UserBeanFactory;
+import com.atlassian.jira.issue.fields.rest.json.beans.JiraBaseUrls;
+import com.atlassian.jira.project.ProjectManager;
 import com.atlassian.jira.security.JiraAuthenticationContext;
+import com.atlassian.jira.security.groups.GroupManager;
+import com.atlassian.jira.security.roles.ProjectRoleManager;
+import com.atlassian.jira.template.soy.SoyTemplateRendererProvider;
+import com.atlassian.jira.user.ApplicationUser;
+import com.atlassian.jira.user.UserFilterManager;
+import com.atlassian.jira.user.UserHistoryManager;
 import com.atlassian.jira.user.util.UserUtil;
+import ru.mail.jira.plugins.up.common.Utils;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 
 /**
@@ -48,16 +57,24 @@ public class SelectedUsersCf extends UserCFType
     /**
      * Constructor.
      */
-    public SelectedUsersCf(CustomFieldValuePersister customFieldValuePersister,
-        GenericConfigManager genericConfigManager,
-        ApplicationProperties applicationProperties,
-        JiraAuthenticationContext authenticationContext,
-        UserPickerSearchService searchService, PluginData data,
-        UserUtil userUtil, com.atlassian.sal.api.ApplicationProperties appProp)
+    public SelectedUsersCf(
+            CustomFieldValuePersister customFieldValuePersister,
+            GenericConfigManager genericConfigManager,
+            ApplicationProperties applicationProperties,
+            JiraAuthenticationContext authenticationContext,
+            UserSearchService searchService, PluginData data,
+            GroupManager grMgr, ProjectManager projectManager,
+            UserConverter userConverter, com.atlassian.sal.api.ApplicationProperties appProp,
+            FieldConfigSchemeManager fieldConfigSchemeManager,
+            SoyTemplateRendererProvider soyTemplateRendererProvider, ProjectRoleManager projectRoleManager,
+            JiraBaseUrls jiraBaseUrls, UserHistoryManager userHistoryManager,
+            UserFilterManager userFilterManager, UserBeanFactory userBeanFactory, UserUtil userUtil)
     {
-        super(customFieldValuePersister, new UserConverterImpl(userUtil),
-            genericConfigManager, applicationProperties, authenticationContext,
-            searchService);
+        super(customFieldValuePersister, userConverter, genericConfigManager, applicationProperties,
+                authenticationContext, fieldConfigSchemeManager, projectManager, soyTemplateRendererProvider,
+                grMgr, projectRoleManager, searchService, jiraBaseUrls, userHistoryManager,
+                userFilterManager, ComponentAccessor.getJiraAuthenticationContext().getI18nHelper(),
+                userBeanFactory);
         this.data = data;
         this.userUtil = userUtil;
 
@@ -75,7 +92,7 @@ public class SelectedUsersCf extends UserCFType
         Set<String> users = data.getStoredUsers(field.getId());
         for (String user : users)
         {
-            User userObj = userUtil.getUserObject(user);
+            ApplicationUser userObj = userUtil.getUserObject(user);
             if (userObj != null)
             {
                 map.put(userObj.getName(), userObj.getDisplayName());

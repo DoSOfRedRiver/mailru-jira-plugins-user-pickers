@@ -5,21 +5,7 @@
 package ru.mail.jira.plugins.up;
 
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.log4j.Logger;
-
-import ru.mail.jira.plugins.up.common.Utils;
-import ru.mail.jira.plugins.up.structures.ProjRole;
-import ru.mail.jira.plugins.up.structures.SingleValueData;
-
-import com.atlassian.crowd.embedded.api.User;
-import com.atlassian.jira.ComponentManager;
+import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.issue.CustomFieldManager;
 import com.atlassian.jira.issue.fields.CustomField;
 import com.atlassian.jira.project.Project;
@@ -27,11 +13,18 @@ import com.atlassian.jira.security.JiraAuthenticationContext;
 import com.atlassian.jira.security.Permissions;
 import com.atlassian.jira.security.groups.GroupManager;
 import com.atlassian.jira.security.roles.ProjectRoleManager;
+import com.atlassian.jira.user.ApplicationUser;
 import com.atlassian.jira.user.UserProjectHistoryManager;
 import com.atlassian.jira.user.util.UserUtil;
 import com.atlassian.jira.util.json.JSONException;
 import com.atlassian.jira.web.action.JiraWebActionSupport;
 import com.atlassian.sal.api.ApplicationProperties;
+import org.apache.log4j.Logger;
+import ru.mail.jira.plugins.up.common.Utils;
+import ru.mail.jira.plugins.up.structures.ProjRole;
+import ru.mail.jira.plugins.up.structures.SingleValueData;
+
+import java.util.*;
 
 
 public class MailRuUserPickerValuePickerAction extends JiraWebActionSupport
@@ -70,21 +63,20 @@ public class MailRuUserPickerValuePickerAction extends JiraWebActionSupport
     @Override
     protected String doExecute() throws Exception
     {
-        JiraAuthenticationContext authCtx = ComponentManager.getInstance()
+        JiraAuthenticationContext authCtx = ComponentAccessor
             .getJiraAuthenticationContext();
-        UserProjectHistoryManager userProjectHistoryManager = ComponentManager
-            .getComponentInstanceOfType(UserProjectHistoryManager.class);
+        UserProjectHistoryManager userProjectHistoryManager = ComponentAccessor.getComponentOfType(UserProjectHistoryManager.class);
         Project currentProject = userProjectHistoryManager.getCurrentProject(
             Permissions.BROWSE, authCtx.getLoggedInUser());
 
-        CustomField cf = ComponentManager.getInstance().getCustomFieldManager()
+        CustomField cf = ComponentAccessor.getCustomFieldManager()
             .getCustomFieldObject(getCfid());
         if (cf == null)
         {
             log.error("MailRuUserPickerValuePickerAction::doExecute - Invalid cf id");
         }
 
-        UserUtil userUtil = ComponentManager.getInstance().getUserUtil();
+        UserUtil userUtil = ComponentAccessor.getUserUtil();
         Map<String, SingleValueData> map;
         if (Utils.isOfGroupRoleUserPickerType(cf.getCustomFieldType().getKey()))
         {
@@ -106,10 +98,10 @@ public class MailRuUserPickerValuePickerAction extends JiraWebActionSupport
 
             for (String group : groups)
             {
-                Collection<User> users = grMgr.getUsersInGroup(group);
+                Collection<ApplicationUser> users = grMgr.getUsersInGroup(group);
                 if (users != null)
                 {
-                    for (User user : users)
+                    for (ApplicationUser user : users)
                     {
                         map.put(
                             user.getName(),
@@ -130,7 +122,7 @@ public class MailRuUserPickerValuePickerAction extends JiraWebActionSupport
                         .keySet();
                     for (String roleUser : rolesUsers)
                     {
-                        User user = userUtil.getUserObject(roleUser);
+                        ApplicationUser user = userUtil.getUserObject(roleUser);
                         if (user != null)
                         {
                             map.put(
@@ -148,7 +140,7 @@ public class MailRuUserPickerValuePickerAction extends JiraWebActionSupport
             Set<String> simpleUsers = settings.getStoredUsers(getCfid());
             for (String simpleUser : simpleUsers)
             {
-                User user = userUtil.getUserObject(simpleUser);
+                ApplicationUser user = userUtil.getUserObject(simpleUser);
                 if (user != null)
                 {
                     map.put(user.getName(), new SingleValueData(user.getName(),

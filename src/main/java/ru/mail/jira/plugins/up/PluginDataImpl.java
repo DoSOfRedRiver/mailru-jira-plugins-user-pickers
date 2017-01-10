@@ -5,11 +5,11 @@
 package ru.mail.jira.plugins.up;
 
 
+import com.atlassian.sal.api.pluginsettings.PluginSettingsFactory;
+
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.StringTokenizer;
-
-import com.atlassian.sal.api.pluginsettings.PluginSettingsFactory;
 
 
 /**

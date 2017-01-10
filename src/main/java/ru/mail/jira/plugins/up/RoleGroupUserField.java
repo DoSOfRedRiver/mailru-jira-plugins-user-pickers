@@ -5,32 +5,32 @@
 package ru.mail.jira.plugins.up;
 
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
-
-import ru.mail.jira.plugins.up.common.Utils;
-import ru.mail.jira.plugins.up.structures.ProjRole;
-
-import com.atlassian.crowd.embedded.api.User;
-import com.atlassian.jira.bc.user.search.UserPickerSearchService;
+import com.atlassian.jira.bc.user.search.UserSearchService;
+import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.config.properties.ApplicationProperties;
 import com.atlassian.jira.issue.Issue;
-import com.atlassian.jira.issue.customfields.converters.UserConverterImpl;
+import com.atlassian.jira.issue.customfields.converters.UserConverter;
 import com.atlassian.jira.issue.customfields.impl.UserCFType;
 import com.atlassian.jira.issue.customfields.manager.GenericConfigManager;
 import com.atlassian.jira.issue.customfields.persistence.CustomFieldValuePersister;
 import com.atlassian.jira.issue.fields.CustomField;
+import com.atlassian.jira.issue.fields.config.manager.FieldConfigSchemeManager;
 import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem;
+import com.atlassian.jira.issue.fields.rest.json.UserBeanFactory;
+import com.atlassian.jira.issue.fields.rest.json.beans.JiraBaseUrls;
+import com.atlassian.jira.project.ProjectManager;
 import com.atlassian.jira.security.JiraAuthenticationContext;
 import com.atlassian.jira.security.groups.GroupManager;
 import com.atlassian.jira.security.roles.ProjectRoleManager;
-import com.atlassian.jira.user.util.UserUtil;
+import com.atlassian.jira.template.soy.SoyTemplateRendererProvider;
+import com.atlassian.jira.user.ApplicationUser;
+import com.atlassian.jira.user.UserFilterManager;
+import com.atlassian.jira.user.UserHistoryManager;
 import com.atlassian.jira.util.json.JSONException;
+import ru.mail.jira.plugins.up.common.Utils;
+import ru.mail.jira.plugins.up.structures.ProjRole;
+
+import java.util.*;
 
 
 /**
@@ -61,17 +61,23 @@ public class RoleGroupUserField extends UserCFType
      * Constructor.
      */
     public RoleGroupUserField(
-        CustomFieldValuePersister customFieldValuePersister,
-        GenericConfigManager genericConfigManager,
-        ApplicationProperties applicationProperties,
-        JiraAuthenticationContext authenticationContext,
-        UserPickerSearchService searchService, PluginData data,
-        GroupManager grMgr, ProjectRoleManager projectRoleManager,
-        UserUtil userUtil, com.atlassian.sal.api.ApplicationProperties appProp)
+            CustomFieldValuePersister customFieldValuePersister,
+            GenericConfigManager genericConfigManager,
+            ApplicationProperties applicationProperties,
+            JiraAuthenticationContext authenticationContext,
+            UserSearchService searchService, PluginData data,
+            GroupManager grMgr, ProjectManager projectManager,
+            UserConverter userConverter, com.atlassian.sal.api.ApplicationProperties appProp,
+            FieldConfigSchemeManager fieldConfigSchemeManager,
+            SoyTemplateRendererProvider soyTemplateRendererProvider, ProjectRoleManager projectRoleManager,
+            JiraBaseUrls jiraBaseUrls, UserHistoryManager userHistoryManager,
+            UserFilterManager userFilterManager, UserBeanFactory userBeanFactory)
     {
-        super(customFieldValuePersister, new UserConverterImpl(userUtil),
-            genericConfigManager, applicationProperties, authenticationContext,
-            searchService);
+        super(customFieldValuePersister, userConverter, genericConfigManager, applicationProperties,
+                authenticationContext, fieldConfigSchemeManager, projectManager, soyTemplateRendererProvider,
+                grMgr, projectRoleManager, searchService, jiraBaseUrls, userHistoryManager,
+                userFilterManager, ComponentAccessor.getJiraAuthenticationContext().getI18nHelper(),
+                userBeanFactory);
         this.data = data;
         this.grMgr = grMgr;
         this.projectRoleManager = projectRoleManager;
@@ -120,10 +126,10 @@ public class RoleGroupUserField extends UserCFType
 
         /* Build possible values list */
 
-        SortedSet<User> possibleUsers = Utils.buildUsersList(grMgr,
+        SortedSet<ApplicationUser> possibleUsers = Utils.buildUsersList(grMgr,
             projectRoleManager, issue.getProjectObject(), groups, projRoles);
-        Set<User> allUsers = new HashSet<User>(possibleUsers);
-        SortedSet<User> highlightedUsers = Utils.buildUsersList(grMgr,
+        Set<ApplicationUser> allUsers = new HashSet<ApplicationUser>(possibleUsers);
+        SortedSet<ApplicationUser> highlightedUsers = Utils.buildUsersList(grMgr,
             projectRoleManager, issue.getProjectObject(), highlightedGroups,
             highlightedProjRoles);
         highlightedUsers.retainAll(possibleUsers);
@@ -131,11 +137,11 @@ public class RoleGroupUserField extends UserCFType
 
         Map<String, String> highlightedUsersSorted = new LinkedHashMap<String, String>();
         Map<String, String> otherUsersSorted = new LinkedHashMap<String, String>();
-        for (User user : highlightedUsers)
+        for (ApplicationUser user : highlightedUsers)
         {
             highlightedUsersSorted.put(user.getName(), user.getDisplayName());
         }
-        for (User user : possibleUsers)
+        for (ApplicationUser user : possibleUsers)
         {
             otherUsersSorted.put(user.getName(), user.getDisplayName());
         }

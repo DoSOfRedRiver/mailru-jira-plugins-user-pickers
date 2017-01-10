@@ -5,27 +5,9 @@
 package ru.mail.jira.plugins.up.common;
 
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
-
-import javax.servlet.http.HttpServletRequest;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import ru.mail.jira.plugins.up.structures.ProjRole;
-
 import com.atlassian.crowd.embedded.api.User;
 import com.atlassian.jira.ComponentManager;
+import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.project.Project;
 import com.atlassian.jira.security.JiraAuthenticationContext;
 import com.atlassian.jira.security.Permissions;
@@ -33,11 +15,20 @@ import com.atlassian.jira.security.groups.GroupManager;
 import com.atlassian.jira.security.roles.ProjectRole;
 import com.atlassian.jira.security.roles.ProjectRoleActors;
 import com.atlassian.jira.security.roles.ProjectRoleManager;
+import com.atlassian.jira.user.ApplicationUser;
 import com.atlassian.jira.user.UserProjectHistoryManager;
 import com.atlassian.jira.util.json.JSONArray;
 import com.atlassian.jira.util.json.JSONException;
 import com.atlassian.jira.util.json.JSONObject;
 import com.atlassian.plugin.PluginAccessor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.mail.jira.plugins.up.structures.ProjRole;
+
+import javax.servlet.http.HttpServletRequest;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.*;
 
 
 /**
@@ -59,7 +50,7 @@ public class Utils
     {
         if (cfRightsInstance == null)
         {
-            PluginAccessor pluginAccessor = ComponentManager.getInstance()
+            PluginAccessor pluginAccessor = ComponentAccessor
                 .getPluginAccessor();
             Class<?> mailRuCfRightsClass;
             try
@@ -86,13 +77,13 @@ public class Utils
         return cfRightsInstance;
     }
 
-    private static boolean canEditCF(User user, String cfId, Project project)
+    private static boolean canEditCF(ApplicationUser user, String cfId, Project project)
     {
         return getPermission(user, cfId, project,
             CF_RIGHTS_METHOD_CAN_EDIT_NAME, "canEditCF");
     }
 
-    private static boolean canViewCF(User user, String cfId, Project project)
+    private static boolean canViewCF(ApplicationUser user, String cfId, Project project)
     {
         return getPermission(user, cfId, project,
             CF_RIGHTS_METHOD_CAN_VIEW_NAME, "canViewCF");
@@ -104,11 +95,10 @@ public class Utils
     public static void addViewAndEditParameters(Map<String, Object> params,
         String cfId)
     {
-        UserProjectHistoryManager userProjectHistoryManager = ComponentManager
-            .getComponentInstanceOfType(UserProjectHistoryManager.class);
-        JiraAuthenticationContext authCtx = ComponentManager.getInstance()
-            .getJiraAuthenticationContext();
-        User currentUser = authCtx.getLoggedInUser();
+        UserProjectHistoryManager userProjectHistoryManager = ComponentAccessor.getComponentOfType(UserProjectHistoryManager.class);
+        JiraAuthenticationContext authCtx = ComponentAccessor
+                .getJiraAuthenticationContext();
+        ApplicationUser currentUser = authCtx.getLoggedInUser();
         Project currentProject = userProjectHistoryManager.getCurrentProject(
             Permissions.BROWSE, currentUser);
 
@@ -125,7 +115,7 @@ public class Utils
         }
     }
 
-    private static boolean getPermission(User user, String cfId,
+    private static boolean getPermission(ApplicationUser user, String cfId,
         Project project, String externalMethodName, String internalMethodName)
     {
         Object cfRights = getCfRightsClass();
@@ -176,7 +166,7 @@ public class Utils
         return false;
     }
 
-    private static String getErrorMessage(User user, String cfId,
+    private static String getErrorMessage(ApplicationUser user, String cfId,
         Project project, String internalMethodName, String externalMethodName,
         String exception)
     {
@@ -320,14 +310,16 @@ public class Utils
             + req.getServerPort() + req.getContextPath());
     }
 
-    public static SortedSet<User> buildUsersList(GroupManager groupManager,
-        ProjectRoleManager projectRoleManager, Project project,
-        List<String> groups, List<ProjRole> projRoles)
+    public static SortedSet<ApplicationUser> buildUsersList(
+            GroupManager groupManager,
+            ProjectRoleManager projectRoleManager,
+            Project project,
+            List<String> groups, List<ProjRole> projRoles)
     {
-        SortedSet<User> usersList = new TreeSet<User>(new Comparator<User>()
+        SortedSet<ApplicationUser> usersList = new TreeSet<ApplicationUser>(new Comparator<ApplicationUser>()
         {
             @Override
-            public int compare(User o1, User o2)
+            public int compare(ApplicationUser o1, ApplicationUser o2)
             {
                 return o1.getDisplayName().compareToIgnoreCase(
                     o2.getDisplayName());
@@ -336,7 +328,7 @@ public class Utils
 
         for (String group : groups)
         {
-            Collection<User> users = groupManager.getUsersInGroup(group);
+            Collection<ApplicationUser> users = groupManager.getUsersInGroup(group);
             if (users != null)
             {
                 usersList.addAll(users);
@@ -390,9 +382,9 @@ public class Utils
                 Set users = projectRoleActors.getUsers();
                 for (Object obj : users)
                 {
-                    if (obj instanceof com.opensymphony.user.User)
+                    if (obj instanceof ApplicationUser)
                     {
-                        com.opensymphony.user.User objUser = (com.opensymphony.user.User) obj;
+                        ApplicationUser objUser = (ApplicationUser) obj;
                         map.put(objUser.getName(), objUser.getDisplayName());
                     }
                     else if (obj instanceof User)
@@ -412,9 +404,9 @@ public class Utils
             Set users = projectRoleActors.getUsers();
             for (Object obj : users)
             {
-                if (obj instanceof com.opensymphony.user.User)
+                if (obj instanceof ApplicationUser)
                 {
-                    com.opensymphony.user.User objUser = (com.opensymphony.user.User) obj;
+                    ApplicationUser objUser = (ApplicationUser) obj;
                     map.put(objUser.getName(), objUser.getDisplayName());
                 }
                 else if (obj instanceof User)

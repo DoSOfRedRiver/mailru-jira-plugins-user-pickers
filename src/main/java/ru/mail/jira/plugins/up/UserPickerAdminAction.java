@@ -5,21 +5,6 @@
 package ru.mail.jira.plugins.up;
 
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
-import org.ofbiz.core.entity.GenericValue;
-
-import ru.mail.jira.plugins.up.common.Consts;
-import ru.mail.jira.plugins.up.common.Utils;
-import ru.mail.jira.plugins.up.structures.FieldData;
-import ru.mail.jira.plugins.up.structures.ProjRole;
-
-import com.atlassian.crowd.embedded.api.User;
 import com.atlassian.jira.issue.CustomFieldManager;
 import com.atlassian.jira.issue.fields.CustomField;
 import com.atlassian.jira.project.Project;
@@ -27,9 +12,16 @@ import com.atlassian.jira.project.ProjectManager;
 import com.atlassian.jira.security.Permissions;
 import com.atlassian.jira.security.roles.ProjectRole;
 import com.atlassian.jira.security.roles.ProjectRoleManager;
+import com.atlassian.jira.user.ApplicationUser;
 import com.atlassian.jira.util.json.JSONException;
 import com.atlassian.jira.web.action.JiraWebActionSupport;
 import com.atlassian.sal.api.ApplicationProperties;
+import ru.mail.jira.plugins.up.common.Consts;
+import ru.mail.jira.plugins.up.common.Utils;
+import ru.mail.jira.plugins.up.structures.FieldData;
+import ru.mail.jira.plugins.up.structures.ProjRole;
+
+import java.util.*;
 
 
 /**
@@ -127,10 +119,10 @@ public class UserPickerAdminAction extends JiraWebActionSupport
                 {
                     fdata.setAllProjects(false);
                     List<String> fieldProjs = new ArrayList<String>();
-                    List<GenericValue> projs = cf.getAssociatedProjects();
-                    for (GenericValue proj : projs)
+                    List<Project> projs = cf.getAssociatedProjectObjects();
+                    for (Project proj : projs)
                     {
-                        fieldProjs.add((String) proj.get("name"));
+                        fieldProjs.add(proj.getName());
                     }
 
                     fdata.setProjects(fieldProjs);
@@ -198,10 +190,10 @@ public class UserPickerAdminAction extends JiraWebActionSupport
                 {
                     fdata.setAllProjects(false);
                     List<String> fieldProjs = new ArrayList<String>();
-                    List<GenericValue> projs = cf.getAssociatedProjects();
-                    for (GenericValue proj : projs)
+                    List<Project> projs = cf.getAssociatedProjectObjects();
+                    for (Project proj : projs)
                     {
-                        fieldProjs.add((String) proj.get("name"));
+                        fieldProjs.add(proj.getName());
                     }
 
                     fdata.setProjects(fieldProjs);
@@ -292,7 +284,7 @@ public class UserPickerAdminAction extends JiraWebActionSupport
      */
     public boolean hasAdminPermission()
     {
-        User user = getLoggedInUser();
+        ApplicationUser user = getLoggedInUser();
         if (user == null)
         {
             return false;

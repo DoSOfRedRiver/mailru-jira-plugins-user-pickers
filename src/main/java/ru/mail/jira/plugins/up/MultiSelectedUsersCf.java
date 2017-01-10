@@ -5,31 +5,31 @@
 package ru.mail.jira.plugins.up;
 
 
-import java.net.URI;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-
-import ru.mail.jira.plugins.up.common.Utils;
-
-import com.atlassian.crowd.embedded.api.User;
-import com.atlassian.jira.ComponentManager;
 import com.atlassian.jira.avatar.Avatar.Size;
 import com.atlassian.jira.avatar.AvatarServiceImpl;
-import com.atlassian.jira.bc.user.search.UserPickerSearchService;
+import com.atlassian.jira.bc.user.search.UserSearchService;
+import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.config.properties.ApplicationProperties;
 import com.atlassian.jira.issue.Issue;
-import com.atlassian.jira.issue.customfields.converters.MultiUserConverterImpl;
-import com.atlassian.jira.issue.customfields.converters.StringConverter;
+import com.atlassian.jira.issue.customfields.converters.MultiUserConverter;
 import com.atlassian.jira.issue.customfields.impl.MultiUserCFType;
 import com.atlassian.jira.issue.customfields.manager.GenericConfigManager;
 import com.atlassian.jira.issue.customfields.persistence.CustomFieldValuePersister;
 import com.atlassian.jira.issue.fields.CustomField;
 import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem;
+import com.atlassian.jira.issue.fields.rest.json.UserBeanFactory;
+import com.atlassian.jira.issue.fields.rest.json.beans.JiraBaseUrls;
 import com.atlassian.jira.security.JiraAuthenticationContext;
+import com.atlassian.jira.user.ApplicationUser;
 import com.atlassian.jira.user.util.UserUtil;
 import com.atlassian.jira.web.FieldVisibilityManager;
+import ru.mail.jira.plugins.up.common.Utils;
+
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 
 /**
@@ -59,24 +59,23 @@ public class MultiSelectedUsersCf extends MultiUserCFType
      * Constructor.
      */
     public MultiSelectedUsersCf(
-        CustomFieldValuePersister customFieldValuePersister,
-        StringConverter stringConverter,
-        GenericConfigManager genericConfigManager,
-        ApplicationProperties applicationProperties,
-        JiraAuthenticationContext authenticationContext,
-        UserPickerSearchService searchService,
-        FieldVisibilityManager fieldVisibilityManager, PluginData data,
-        UserUtil userUtil, com.atlassian.sal.api.ApplicationProperties appProp)
+            CustomFieldValuePersister customFieldValuePersister,
+            GenericConfigManager genericConfigManager,
+            ApplicationProperties applicationProperties,
+            JiraAuthenticationContext authenticationContext,
+            FieldVisibilityManager fieldVisibilityManager, PluginData data,
+            UserUtil userUtil, com.atlassian.sal.api.ApplicationProperties appProp,
+            UserSearchService searchService, MultiUserConverter multiUserConverter,
+            JiraBaseUrls jiraBaseUrls, UserBeanFactory userBeanFactory)
     {
-        super(customFieldValuePersister, stringConverter, genericConfigManager,
-            new MultiUserConverterImpl(userUtil), applicationProperties,
-            authenticationContext, searchService, fieldVisibilityManager);
+        super(customFieldValuePersister, genericConfigManager, multiUserConverter,
+                applicationProperties, authenticationContext, searchService,
+                fieldVisibilityManager, jiraBaseUrls, userBeanFactory);
         this.data = data;
         this.userUtil = userUtil;
         baseUrl = appProp.getBaseUrl();
 
-        this.avatarService = ComponentManager
-            .getComponentInstanceOfType(AvatarServiceImpl.class);
+        this.avatarService = ComponentAccessor.getComponentOfType(AvatarServiceImpl.class);
     }
 
     @Override
@@ -90,7 +89,7 @@ public class MultiSelectedUsersCf extends MultiUserCFType
         Set<String> users = data.getStoredUsers(field.getId());
         for (String user : users)
         {
-            User userObj = userUtil.getUserObject(user);
+            ApplicationUser userObj = userUtil.getUserObject(user);
             if (userObj != null)
             {
                 map.put(userObj.getName(), userObj.getDisplayName());
@@ -112,7 +111,7 @@ public class MultiSelectedUsersCf extends MultiUserCFType
         usersAvatars = new HashMap<String, String>(users.size());
         for (String userName : users)
         {
-            User user = ComponentManager.getInstance().getUserUtil()
+            ApplicationUser user = ComponentAccessor.getUserUtil()
                 .getUserObject(userName);
             if (user != null)
             {
@@ -126,7 +125,7 @@ public class MultiSelectedUsersCf extends MultiUserCFType
         return params;
     }
 
-    private String getUserAvatarUrl(User user)
+    private String getUserAvatarUrl(ApplicationUser user)
     {
         URI uri = avatarService.getAvatarURL(user, user.getName(), Size.SMALL);
 
